@@ -15,7 +15,7 @@ const verify_VPA_url ="https://api-preprod.phonepe.com/apis/pg-sandbox/v3/vpa/{m
 
 const submit_auth_request_url = "https://api-preprod.phonepe.com/apis/pg-sandbox/v3/recurring/auth/init"
 
-const auth_request_status_url = "https://api-preprod.phonepe.com/apis/pg-sandbox/v3/recurring/auth/status/{merchantId}/{authRequestId}"
+const auth_request_status_url = "https://api-preprod.phonepe.com/apis/pg-sandbox"
 
 const recurring_INIT_url = "https://api-preprod.phonepe.com/apis/pg-sandbox/v3/recurring/debit/init"
 

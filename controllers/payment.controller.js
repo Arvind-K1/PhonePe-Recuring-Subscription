@@ -14,6 +14,7 @@ const {
   user_subscription_status_url,
   fetch_all_subscriptions_url,
   submit_auth_request_url,
+  auth_request_status_url,
 } = require("../utils/phonepe.url");
 
 function generateXVerify(base64Payload, apiPath) {
@@ -308,9 +309,61 @@ const submit_auth_request = async (req, res) => {
   }
 };
 
+const auth_request_status = async (req, res) => {
+  try {
+    const { userName } = req.query;
+
+    // Fetch payment details using userName
+    const paymentDetails = await User.findOne({userName});
+
+    if (!paymentDetails || !paymentDetails.authRequestId) {
+      return res.status(404).json({ error: "Payment details not found." });
+    }
+
+    const { authRequestId } = paymentDetails;
+
+    function generatexVerify(hashInput) {
+        const hash = crypto.createHash("sha256").update(hashInput).digest("hex");
+        return `${hash}###${SALT_INDEX}`;
+    }
+
+    const apiPath = `/v3/recurring/auth/status/${MERCHENT_ID}/${authRequestId}`;
+    const url = `${auth_request_status_url}${apiPath}`;
+
+    // Generate X-Verify header
+    const xVerify = generatexVerify(apiPath + SALT_KEY);
+
+    const options = {
+      method: "get",
+      url,
+      headers: {
+        accept: "application/json",
+        "Content-Type": "application/json",
+        "X-VERIFY": xVerify,
+      },
+    };
+
+    // Make API call
+    axios
+      .request(options)
+      .then(function (response) {
+        console.log("Response Data:", response.data);
+        res.json(response.data);
+      })
+      .catch(function (error) {
+        console.error("Error fetching auth request status:", error);
+        res.status(500).json({ error: "Failed to fetch auth request status." });
+      });
+  } catch (error) {
+    console.error("Error processing auth request status:", error.message);
+    res.status(500).json({ error: "Failed to process auth request status." });
+  }
+};
+
 module.exports = {
   create_user_subscription,
   user_subscription_status,
   fetch_all_subscriptions,
-  submit_auth_request
+  submit_auth_request,
+  auth_request_status
 };
