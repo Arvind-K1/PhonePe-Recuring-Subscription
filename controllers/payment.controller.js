@@ -15,6 +15,7 @@ const {
   fetch_all_subscriptions_url,
   submit_auth_request_url,
   auth_request_status_url,
+  recurring_INIT_url,
 } = require("../utils/phonepe.url");
 
 function generateXVerify(base64Payload, apiPath) {
@@ -314,7 +315,7 @@ const auth_request_status = async (req, res) => {
     const { userName } = req.query;
 
     // Fetch payment details using userName
-    const paymentDetails = await User.findOne({userName});
+    const paymentDetails = await User.findOne({ userName });
 
     if (!paymentDetails || !paymentDetails.authRequestId) {
       return res.status(404).json({ error: "Payment details not found." });
@@ -323,8 +324,8 @@ const auth_request_status = async (req, res) => {
     const { authRequestId } = paymentDetails;
 
     function generatexVerify(hashInput) {
-        const hash = crypto.createHash("sha256").update(hashInput).digest("hex");
-        return `${hash}###${SALT_INDEX}`;
+      const hash = crypto.createHash("sha256").update(hashInput).digest("hex");
+      return `${hash}###${SALT_INDEX}`;
     }
 
     const apiPath = `/v3/recurring/auth/status/${MERCHENT_ID}/${authRequestId}`;
@@ -360,10 +361,77 @@ const auth_request_status = async (req, res) => {
   }
 };
 
+const recurring_INIT = async (req, res) => {
+  try {
+    const { subscriptionId } = req.body;
+
+    // Fetch subscription details from the database
+    const subscription = await User.findOne({ subscriptionId });
+
+    if (!subscription) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Subscription not found" });
+    }
+
+    const { merchantUserId, amount } = subscription;
+
+    // Generate JSON Payload
+    const payload = {
+      merchantId: MERCHENT_ID, // From environment variables
+      merchantUserId, // Merchant's unique user ID
+      subscriptionId,
+      transactionId: `TX${Date.now()}`, // Generate unique transaction ID
+      autoDebit: true, // Set as per requirement
+      amount: amount, // Amount in paisa
+    };
+
+    // Convert Payload to Base64
+    const base64Payload = Buffer.from(JSON.stringify(payload)).toString(
+      "base64"
+    );
+
+    // Generate X-Verify header
+    const urlPath = "/v3/recurring/debit/init";
+    const hash = crypto
+      .createHash("sha256")
+      .update(base64Payload + urlPath + SALT_KEY)
+      .digest("hex");
+    const xVerify = `${hash}###${SALT_INDEX}`;
+    
+    // Configure the request options
+    const options = {
+      method: "post",
+      url: recurring_INIT_url,
+      headers: {
+        accept: "text/plain",
+        "Content-Type": "application/json",
+        "X-Verify": xVerify,
+        "X-CALLBACK-URL": CALLBACK_URL,
+      },
+      data: {
+        request: base64Payload,
+      },
+    };
+
+    axios
+      .request(options)
+      .then(function (response) {
+        console.log("Response Data:", response.data);
+        return res.status(200).json({ success: true, data: response.data });
+      })
+      .catch(function (error) {
+        console.error("Error making API request:", error);
+        res.status(500).json({ error: "Failed to process recurring init." });
+      });
+
+  } catch (error) {}
+};
 module.exports = {
   create_user_subscription,
   user_subscription_status,
   fetch_all_subscriptions,
   submit_auth_request,
-  auth_request_status
+  auth_request_status,
+  recurring_INIT
 };

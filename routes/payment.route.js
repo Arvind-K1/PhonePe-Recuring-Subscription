@@ -19,6 +19,8 @@ router.route("/submit-auth-request").get(submit_auth_request);
 
 router.route("/auth-request-status").get(auth_request_status);
 
+router.route("/recurring-INIT").post(recurring_INIT);
+
 
 
 module.exports = router;
