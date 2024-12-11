@@ -10,6 +10,7 @@ const {
   SALT_KEY,
   SALT_INDEX,
   CALLBACK_URL,
+  CALLBACK_RECURRING_URL,
   create_user_subscription_url,
   user_subscription_status_url,
   fetch_all_subscriptions_url,
@@ -407,7 +408,7 @@ const recurring_INIT = async (req, res) => {
         accept: "text/plain",
         "Content-Type": "application/json",
         "X-Verify": xVerify,
-        "X-CALLBACK-URL": CALLBACK_URL,
+        "X-CALLBACK-URL": CALLBACK_RECURRING_URL,
       },
       data: {
         request: base64Payload,
