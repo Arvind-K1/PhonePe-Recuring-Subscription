@@ -17,9 +17,16 @@ router.route("/fetch-all-subscriptions").get(fetch_all_subscriptions);
 
 router.route("/submit-auth-request").get(submit_auth_request);
 
-router.route("/auth-request-status").get(auth_request_status);
+router.route("/auth-request-status").patch(auth_request_status);
 
-router.route("/recurring-INIT").post(recurring_INIT);
+router.route("/recurring-INIT").patch(recurring_INIT);
+
+router.route("/recurring-debit-execute/:transactionId").post(recurring_debit_execute);
+
+ter.route("/recurring_debit_execute_status/:userName").get(recurring_debit_execute_status);
+
+
+
 
 
 

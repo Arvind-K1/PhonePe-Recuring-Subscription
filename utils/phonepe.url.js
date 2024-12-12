@@ -24,7 +24,7 @@ const recurring_INIT_url = "https://api-preprod.phonepe.com/apis/pg-sandbox/v3/r
 
 const recurring_debit_execute_url = "https://api-preprod.phonepe.com/apis/pg-sandbox/v3/recurring/debit/execute"
 
-const recurring_debit_execute_status_url = "https://api-preprod.phonepe.com/apis/pg-sandbox/v3/recurring/debit/status/{merchantId}/{merchantTransactionId}"
+const recurring_debit_execute_status_url = "https://api-preprod.phonepe.com/apis/pg-sandbox"
 
 const cancel_subscription_url = "https://api-preprod.phonepe.com/apis/pg-sandbox/v3/recurring/subscription/cancel"
 

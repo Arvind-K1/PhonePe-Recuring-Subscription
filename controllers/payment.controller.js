@@ -17,6 +17,8 @@ const {
   submit_auth_request_url,
   auth_request_status_url,
   recurring_INIT_url,
+  recurring_debit_execute_url,
+  recurring_debit_execute_status_url,
 } = require("../utils/phonepe.url");
 
 function generateXVerify(base64Payload, apiPath) {
@@ -350,7 +352,23 @@ const auth_request_status = async (req, res) => {
       .request(options)
       .then(function (response) {
         console.log("Response Data:", response.data);
-        res.json(response.data);
+
+        const transactionId = `TX${Date.now()}`;
+        const user = User.findOneAndUpdate(
+          { userName },
+          { transactionId },
+          { new: true } // Return the updated document
+        );
+
+        if (!user) {
+          return res.status(404).json({ error: "User not found." });
+        }
+
+        res.status(201).json({
+          success: true,
+          data: user,
+          response: response.data,
+        });
       })
       .catch(function (error) {
         console.error("Error fetching auth request status:", error);
@@ -375,14 +393,14 @@ const recurring_INIT = async (req, res) => {
         .json({ success: false, message: "Subscription not found" });
     }
 
-    const { merchantUserId, amount } = subscription;
+    const { transactionId, merchantUserId, amount } = subscription;
 
     // Generate JSON Payload
     const payload = {
       merchantId: MERCHENT_ID, // From environment variables
       merchantUserId, // Merchant's unique user ID
       subscriptionId,
-      transactionId: `TX${Date.now()}`, // Generate unique transaction ID
+      transactionId, // Generate unique transaction ID
       autoDebit: true, // Set as per requirement
       amount: amount, // Amount in paisa
     };
@@ -399,7 +417,7 @@ const recurring_INIT = async (req, res) => {
       .update(base64Payload + urlPath + SALT_KEY)
       .digest("hex");
     const xVerify = `${hash}###${SALT_INDEX}`;
-    
+
     // Configure the request options
     const options = {
       method: "post",
@@ -419,14 +437,131 @@ const recurring_INIT = async (req, res) => {
       .request(options)
       .then(function (response) {
         console.log("Response Data:", response.data);
+
+        const notificationId = response.data.data.notificationId;
+
+        const user = User.findOneAndUpdate(
+          { subscriptionId },
+          { notificationId },
+          { new: true } // Return the updated document
+        );
+
+        if (!user) {
+          return res.status(404).json({ error: "User not found." });
+        }
+
+        res.status(201).json({
+          success: true,
+          data: user,
+          response: response.data,
+        });
+
         return res.status(200).json({ success: true, data: response.data });
       })
       .catch(function (error) {
         console.error("Error making API request:", error);
         res.status(500).json({ error: "Failed to process recurring init." });
       });
-
   } catch (error) {}
+};
+
+const recurring_debit_execute = async (req, res) => {
+  try {
+    const { transactionId } = req.params;
+    const transaction = await User.findOne({ transactionId });
+    if (!transaction) {
+      return res.status(404).json({ error: "Transaction not found" });
+    }
+
+    // Construct payload
+    const payload = {
+      merchantId: MERCHENT_ID,
+      merchantUserId: transaction.merchantUserId || "",
+      subscriptionId: transaction.subscriptionId,
+      notificationId: transaction.notificationId,
+      transactionId: transaction.transactionId,
+    };
+
+    // Base64 encode payload
+    const base64Payload = Buffer.from(JSON.stringify(payload)).toString(
+      "base64"
+    );
+
+    // Generate X-VERIFY header
+    const API_ENDPOINT = "/v3/recurring/debit/execute";
+    const xVerify = generateXVerify(payload, API_ENDPOINT);
+
+    const options = {
+      method: "post",
+      url: recurring_debit_execute_url,
+      headers: {
+        accept: "application/json",
+        "Content-Type": "application/json",
+        "X-VERIFY": xVerify,
+      },
+      data: {
+        response: base64Payload,
+      },
+    };
+
+    axios
+      .request(options)
+      .then(function (response) {
+        console.log("Response:", response.data);
+
+        if (response.data.success) {
+          console.log("Transaction Successful:", response.data.data);
+          res.status(200).json({
+            success: true,
+            response: response.data,
+          });
+        } else {
+          console.error("Transaction Failed:", response.data.message);
+        }
+      })
+      .catch(function (error) {
+        console.error("Error:", error.response?.data || error.message);
+      });
+  } catch (error) {}
+};
+
+const recurring_debit_execute_status = async (req, res) => {
+  try {
+    const { userName } = req.params;
+
+    const user = await User.findOne({ userName });
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    }
+
+    const transactionId = user.transactionId;
+    const apiPath = `/v3/recurring/debit/status/${MERCHENT_ID}/${transactionId}`;
+    const xVerify = generateXVerify(null, apiPath);
+
+    const options = {
+      method: "get",
+      url: `${recurring_debit_execute_status_url}${apiPath}`,
+      headers: {
+        "Content-Type": "application/json",
+        "X-VERIFY": xVerify,
+      },
+    };
+
+    const response = await axios.request(options);
+
+    if (response.data.success) {
+      res.json({ status: "success", data: response.data.data });
+    } else {
+      res
+        .status(400)
+        .json({ status: "failure", message: response.data.message });
+    }
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: error.message });
+
+  }
 };
 module.exports = {
   create_user_subscription,
@@ -434,5 +569,7 @@ module.exports = {
   fetch_all_subscriptions,
   submit_auth_request,
   auth_request_status,
-  recurring_INIT
+  recurring_INIT,
+  recurring_debit_execute,
+  recurring_debit_execute_status
 };

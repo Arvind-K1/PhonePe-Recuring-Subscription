@@ -15,6 +15,12 @@ const userSchema = new mongoose.Schema({
     subscriptionId: {
         type: String
     },
+    transactionId:{
+        type: String
+    },
+    notificationId : {
+        type: String
+    },
     authRequestId: {
         type: String
     },
