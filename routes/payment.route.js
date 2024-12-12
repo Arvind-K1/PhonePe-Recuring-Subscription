@@ -23,7 +23,11 @@ router.route("/recurring-INIT").patch(recurring_INIT);
 
 router.route("/recurring-debit-execute/:transactionId").post(recurring_debit_execute);
 
-ter.route("/recurring_debit_execute_status/:userName").get(recurring_debit_execute_status);
+router.route("/recurring-debit-execute-status/:userName").post(recurring_debit_execute_status);
+
+router.route("/cancel-subscription/:userName").get(cancel_subscription);
+
+
 
 
 

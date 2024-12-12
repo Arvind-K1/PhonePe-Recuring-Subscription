@@ -5,7 +5,7 @@ const SALT_KEY = "96434309-7796-489d-8924-ab56988a6076";
 const CALLBACK_URL = "http://localhost:3002/api/callback";
 const CALLBACK_RECURRING_URL = "http://localhost:3002/api/recurring/callback";
 
-recurring
+const CALLBACK_cancel_subscription = "http://localhost:3002/api/cancel-subscription/callback";
 
 
 const create_user_subscription_url = "https://api-preprod.phonepe.com/apis/pg-sandbox/v3/recurring/subscription/create";
@@ -34,6 +34,7 @@ module.exports = {
     SALT_KEY,
     CALLBACK_URL,
     CALLBACK_RECURRING_URL,
+    CALLBACK_cancel_subscription,
     create_user_subscription_url,
     user_subscription_status_url,
     fetch_all_subscriptions_url,

@@ -36,6 +36,28 @@ app.post('/api/recurring/callback', async (req, res) => {
     }
 });
 
+app.post('/api/cancel-subscription/callback', async (req, res) => {
+    try {
+      const base64Response = req.body.response;
+      const decodedResponse = JSON.parse(Buffer.from(base64Response, 'base64').toString('utf-8'));
+  
+      if (decodedResponse.success) {
+        console.log('Callback received:', decodedResponse);
+  
+        // Update subscription state in database
+        const { subscriptionDetails } = decodedResponse.data;
+        await db.updateSubscriptionState(subscriptionDetails.subscriptionId, subscriptionDetails.state);
+  
+        res.status(200).send('Callback processed successfully');
+      } else {
+        res.status(400).send('Invalid callback response');
+      }
+    } catch (error) {
+      console.error('Error processing callback:', error);
+      res.status(500).send('Error processing callback');
+    }
+  });
+
 
 
 // Routes import 

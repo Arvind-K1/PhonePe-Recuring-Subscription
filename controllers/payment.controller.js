@@ -11,6 +11,7 @@ const {
   SALT_INDEX,
   CALLBACK_URL,
   CALLBACK_RECURRING_URL,
+  CALLBACK_cancel_subscription,
   create_user_subscription_url,
   user_subscription_status_url,
   fetch_all_subscriptions_url,
@@ -19,6 +20,7 @@ const {
   recurring_INIT_url,
   recurring_debit_execute_url,
   recurring_debit_execute_status_url,
+  cancel_subscription_url,
 } = require("../utils/phonepe.url");
 
 function generateXVerify(base64Payload, apiPath) {
@@ -559,10 +561,66 @@ const recurring_debit_execute_status = async (req, res) => {
         .json({ status: "failure", message: response.data.message });
     }
   } catch (error) {
+    res.status(500).json({ status: "error", message: error.message });
+  }
+};
+
+const cancel_subscription = async (req, res) => {
+  try {
+    const { userName } = req.params;
+    const user = await User.findOne({ userName });
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    }
+
+    const { merchantUserId, subscriptionId } = user;
+
+    const payload = {
+      merchantId: MERCHENT_ID,
+      merchantUserId: merchantUserId,
+      subscriptionId: subscriptionId,
+    };
+
+    const base64Payload = Buffer.from(JSON.stringify(payload)).toString(
+      "base64"
+    );
+    const apiPath = "/v3/recurring/subscription/cancel";
+    const xVerify = generateXVerify(base64Payload, apiPath);
+
+    const options = {
+      method: "post",
+      url: cancel_subscription_url,
+      headers: {
+        "Content-Type": "application/json",
+        "X-VERIFY": xVerify,
+        "X-CALLBACK-URL": CALLBACK_cancel_subscription,
+      },
+      data: {
+        request: base64Payload,
+      },
+    };
+
+    const response = await axios.request(options);
+
+    if (response.data.success) {
+      res.json({
+        status: "success",
+        message: response.data.message,
+        data: response.data.data,
+      });
+    } else {
+      res
+        .status(400)
+        .json({ status: "failure", message: response.data.message });
+    }
+  } catch (error) {
     res.status(500).json({ status: 'error', message: error.message });
 
   }
 };
+
 module.exports = {
   create_user_subscription,
   user_subscription_status,
@@ -571,5 +629,6 @@ module.exports = {
   auth_request_status,
   recurring_INIT,
   recurring_debit_execute,
-  recurring_debit_execute_status
+  recurring_debit_execute_status,
+  cancel_subscription
 };
