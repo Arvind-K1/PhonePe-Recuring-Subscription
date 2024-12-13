@@ -535,15 +535,17 @@ const recurring_debit_execute = async (req, res) => {
       return res.status(404).json({ error: "Transaction not found" });
     }
 
+    const { merchantUserId, subscriptionId, notificationId} = transaction; 
+
     // Construct payload
     const payload = {
       merchantId: MERCHENT_ID,
-      merchantUserId: transaction.merchantUserId || "",
-      subscriptionId: transaction.subscriptionId,
-      notificationId: transaction.notificationId,
+      merchantUserId: merchantUserId || "",
+      subscriptionId,
+      notificationId,
       transactionId,
     };
-
+    
     // Base64 encode payload
     const bufferObj = Buffer.from(JSON.stringify(payload), "utf8");
     const base64Payload = bufferObj.toString("base64");
