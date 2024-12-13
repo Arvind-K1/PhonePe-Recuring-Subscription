@@ -357,32 +357,55 @@ const auth_request_status = async (req, res) => {
     };
 
     // Make API call
-    axios
-      .request(options)
-      .then(function (response) {
-        console.log("Response Data:", response.data);
+    // axios
+    //   .request(options)
+    //   .then(function (response) {
+    //     console.log("Response Data:", response.data);
 
-        const transactionId = `TX${Date.now()}`;
-        const user = User.findOneAndUpdate(
-          { userName },
-          { transactionId },
-          { new: true } // Return the updated document
-        );
+    //     const transactionId = `TX${Date.now()}`;
+    //     const user = User.findOneAndUpdate(
+    //       { userName },
+    //       { transactionId },
+    //       { new: true } // Return the updated document
+    //     ).lean();
 
-        if (!user) {
-          return res.status(404).json({ error: "User not found." });
-        }
+    //     if (!user) {
+    //       return res.status(404).json({ error: "User not found." });
+    //     }
 
-        res.status(201).json({
-          success: true,
-          data: user,
-          response: response.data,
-        });
-      })
-      .catch(function (error) {
-        console.error("Error fetching auth request status:", error);
-        res.status(500).json({ error: "Failed to fetch auth request status." });
-      });
+    //     res.status(201).json({
+    //       success: true,
+    //       // data: user,
+    //       response: response.data,
+    //     });
+    //   })
+    //   .catch(function (error) {
+    //     console.error("Error fetching auth request status:", error);
+    //     res.status(500).json({ error: "Failed to fetch auth request status." });
+    //   });
+
+    // Make API call
+    const response = await axios.request(options);
+
+    console.log("API Response Data:", response.data);
+
+    const transactionId = `TX${Date.now()}`;
+    const updatedUser = await User.findOneAndUpdate(
+      { userName },
+      { transactionId },
+      { new: true } // Return the updated document
+    ).lean(); // Convert to plain JavaScript object
+
+    if (!updatedUser) {
+      return res.status(404).json({ error: "User not found." });
+    }
+
+    res.status(201).json({
+      success: true,
+      data: updatedUser,
+      response: response.data,
+    });
+
   } catch (error) {
     console.error("Error processing auth request status:", error.message);
     res.status(500).json({ error: "Failed to process auth request status." });
@@ -391,7 +414,7 @@ const auth_request_status = async (req, res) => {
 
 const recurring_INIT = async (req, res) => {
   try {
-    const { subscriptionId } = req.body;
+    const { subscriptionId } = req.query;
 
     // Fetch subscription details from the database
     const subscription = await User.findOne({ subscriptionId });
@@ -431,7 +454,7 @@ const recurring_INIT = async (req, res) => {
       method: "post",
       url: recurring_INIT_url,
       headers: {
-        accept: "text/plain",
+        accept: "application/json",
         "Content-Type": "application/json",
         "X-Verify": xVerify,
         "X-CALLBACK-URL": CALLBACK_RECURRING_URL,
@@ -441,36 +464,67 @@ const recurring_INIT = async (req, res) => {
       },
     };
 
-    axios
-      .request(options)
-      .then(function (response) {
-        console.log("Response Data:", response.data);
+    // axios
+    //   .request(options)
+    //   .then(function (response) {
+    //     console.log("Response Data:", response.data);
 
-        const notificationId = response.data.data.notificationId;
+    //     const notificationId = response.data.data.notificationId;
 
-        const user = User.findOneAndUpdate(
-          { subscriptionId },
-          { notificationId },
-          { new: true } // Return the updated document
-        );
+    //     const user = User.findOneAndUpdate(
+    //       { subscriptionId },
+    //       { notificationId },
+    //       { new: true } // Return the updated document
+    //     );
 
-        if (!user) {
-          return res.status(404).json({ error: "User not found." });
-        }
+    //     if (!user) {
+    //       return res.status(404).json({ error: "User not found." });
+    //     }
 
-        res.status(201).json({
-          success: true,
-          data: user,
-          response: response.data,
-        });
+    //     res.status(201).json({
+    //       success: true,
+    //       data: user,
+    //       response: response.data,
+    //     });
 
-        return res.status(200).json({ success: true, data: response.data });
-      })
-      .catch(function (error) {
-        console.error("Error making API request:", error);
-        res.status(500).json({ error: "Failed to process recurring init." });
-      });
-  } catch (error) {}
+    //     return res.status(200).json({ success: true, data: response.data });
+    //   })
+    //   .catch(function (error) {
+    //     console.error("Error making API request:", error);
+    //     res.status(500).json({ error: "Failed to process recurring init." });
+    //   });
+
+     // Make API call
+     const response = await axios.request(options);
+
+     console.log("Response Data:", response.data);
+ 
+     // Extract `notificationId` and update the user
+     const notificationId = response.data.data.notificationId;
+ 
+     const updatedUser = await User.findOneAndUpdate(
+       { subscriptionId },
+       { notificationId },
+       { new: true } // Return the updated document
+     ).lean(); // Convert to a plain JavaScript object
+ 
+     if (!updatedUser) {
+       return res.status(404).json({ error: "User not found." });
+     }
+ 
+     res.status(201).json({
+       success: true,
+       data: updatedUser,
+       response: response.data,
+     });
+
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: "Failed to process recurring init.",
+      error: error
+    })
+  }
 };
 
 const recurring_debit_execute = async (req, res) => {
@@ -487,7 +541,7 @@ const recurring_debit_execute = async (req, res) => {
       merchantUserId: transaction.merchantUserId || "",
       subscriptionId: transaction.subscriptionId,
       notificationId: transaction.notificationId,
-      transactionId: transaction.transactionId,
+      transactionId,
     };
 
     // Base64 encode payload
@@ -496,7 +550,7 @@ const recurring_debit_execute = async (req, res) => {
 
     // Generate X-VERIFY header
     const API_ENDPOINT = "/v3/recurring/debit/execute";
-    const xVerify = generateXVerify(payload, API_ENDPOINT);
+    const xVerify = generateXVerify(base64Payload, API_ENDPOINT);
 
     const options = {
       method: "post",
@@ -524,12 +578,28 @@ const recurring_debit_execute = async (req, res) => {
           });
         } else {
           console.error("Transaction Failed:", response.data.message);
+          res.status(400).json({
+            success: false,
+            message: "Error in Transaction",
+            data: response.data
+          })
         }
+
       })
       .catch(function (error) {
         console.error("Error:", error.response?.data || error.message);
+        res.status(400).json({
+          success: false,
+          error: error.response?.data || error.message
+        })
       });
-  } catch (error) {}
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: "Error in debit execution",
+      error: error
+    })
+  }
 };
 
 const recurring_debit_execute_status = async (req, res) => {
@@ -590,7 +660,7 @@ const cancel_subscription = async (req, res) => {
 
     const bufferObj = Buffer.from(JSON.stringify(payload), "utf8");
     const base64Payload = bufferObj.toString("base64");
-    
+
     const apiPath = "/v3/recurring/subscription/cancel";
     const xVerify = generateXVerify(base64Payload, apiPath);
 
