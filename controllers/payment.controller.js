@@ -24,7 +24,7 @@ const {
 } = require("../utils/phonepe.url");
 
 function generateXVerify(base64Payload, apiPath) {
-  const hashInput = apiPath + base64Payload + SALT_KEY;
+  const hashInput = base64Payload + apiPath + SALT_KEY;
   const hash = crypto.createHash("sha256").update(hashInput).digest("hex");
   return `${hash}###${SALT_INDEX}`;
 }
@@ -103,6 +103,8 @@ const create_user_subscription = async (req, res) => {
             message: "user creation failed",
           });
         }
+        console.log(user);
+        
 
         return res.status(200).json({
           success: true,
@@ -256,23 +258,28 @@ const submit_auth_request = async (req, res) => {
     }
 
     const { merchantUserId, subscriptionId, authRequestId } = paymentDetails;
+    // console.log(merchantUserId);
+    // console.log(subscriptionId);
+    // console.log(authRequestId);
+
+    
 
     // Payload
     const payload = {
       merchantId: MERCHENT_ID,
-      merchantUserId,
-      subscriptionId,
-      authRequestId,
+      merchantUserId: merchantUserId,
+      subscriptionId: subscriptionId,
+      authRequestId: authRequestId,
       paymentInstrument: { type: "UPI_QR" },
     };
 
     // Encode payload to Base64
-    const base64Payload = Buffer.from(JSON.stringify(payload)).toString(
-      "base64"
-    );
+    const bufferObj = Buffer.from(JSON.stringify(payload), "utf8");
+    const base64EncodedPayload = bufferObj.toString("base64");
+    
 
     // Generate X-Verify header
-    const xVerify = generateXVerify(base64Payload, "/v3/recurring/auth/init");
+    const xVerify = generateXVerify(base64EncodedPayload, "/v3/recurring/auth/init");
 
     // Log the request details
     // console.log("Payload:", payload);
@@ -289,7 +296,7 @@ const submit_auth_request = async (req, res) => {
         "X-CALLBACK-URL": CALLBACK_URL,
       },
       data: {
-        request: base64Payload,
+        request: base64EncodedPayload,
       },
     };
 
@@ -297,8 +304,8 @@ const submit_auth_request = async (req, res) => {
       .request(options)
       .then(function (response) {
         console.log("Response Data:", response.data);
+        const intentUrl = response.data.data.redirectUrl;
 
-        const intentUrl = response.data.data.intentUrl; // Extract the intent URL
         if (intentUrl) {
           res.json({ intentUrl }); // Send the intent URL to the client
         } else {
@@ -307,7 +314,7 @@ const submit_auth_request = async (req, res) => {
       })
       .catch(function (error) {
         console.error("Error making API request:", error);
-        res.status(500).json({ error: "Failed to process recurring payment." });
+        res.status(500).json({ error: "Failed to start recurring payment." });
       });
   } catch (error) {
     console.error("Error processing recurring payment:", error.message);
@@ -408,9 +415,8 @@ const recurring_INIT = async (req, res) => {
     };
 
     // Convert Payload to Base64
-    const base64Payload = Buffer.from(JSON.stringify(payload)).toString(
-      "base64"
-    );
+    const bufferObj = Buffer.from(JSON.stringify(payload), "utf8");
+    const base64Payload = bufferObj.toString("base64");
 
     // Generate X-Verify header
     const urlPath = "/v3/recurring/debit/init";
@@ -485,9 +491,8 @@ const recurring_debit_execute = async (req, res) => {
     };
 
     // Base64 encode payload
-    const base64Payload = Buffer.from(JSON.stringify(payload)).toString(
-      "base64"
-    );
+    const bufferObj = Buffer.from(JSON.stringify(payload), "utf8");
+    const base64Payload = bufferObj.toString("base64");
 
     // Generate X-VERIFY header
     const API_ENDPOINT = "/v3/recurring/debit/execute";
@@ -583,9 +588,9 @@ const cancel_subscription = async (req, res) => {
       subscriptionId: subscriptionId,
     };
 
-    const base64Payload = Buffer.from(JSON.stringify(payload)).toString(
-      "base64"
-    );
+    const bufferObj = Buffer.from(JSON.stringify(payload), "utf8");
+    const base64Payload = bufferObj.toString("base64");
+    
     const apiPath = "/v3/recurring/subscription/cancel";
     const xVerify = generateXVerify(base64Payload, apiPath);
 

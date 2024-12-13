@@ -4,7 +4,12 @@ const {
     create_user_subscription,
     user_subscription_status,
     fetch_all_subscriptions,
-    submit_auth_request
+    submit_auth_request,
+    auth_request_status,
+    recurring_INIT,
+    recurring_debit_execute,
+    recurring_debit_execute_status,
+    cancel_subscription
 } = require("../controllers/payment.controller");
 
 const router = express.Router();
